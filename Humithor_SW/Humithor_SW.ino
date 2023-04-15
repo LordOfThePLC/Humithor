@@ -1,8 +1,7 @@
 //Include Headerfiles
 #include "Config.h"
 #include "Class_Motor.h"
-#include "Class_HYT221.h"
-#include "Class_TimerOn.h"
+#include "Class_Sensorhandling.h"
 
 //Include Libraries
 #include <LiquidCrystal.h>
@@ -11,7 +10,7 @@
 LiquidCrystal LcdScreen(LCD_RESET, LCD_ENABLE, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 Motor Fan_Circulator;
 Motor Fan_Humidifier;
-HYT_221_Environmentsensor Environmentsensor;
+Sensorhandling Environmentsensor;
 TimerOn tOn_IntervallCirculation_On;
 TimerOn tOn_IntervallCirculation_Off;
 
@@ -60,8 +59,6 @@ void ControlHumidity() {
 void PrintEnvironmentData() {
 
   char buf[80];  //Buffer-Memory
-  //String buf = 'Temp:' + Environmentsensor.getTemperature() + 'C';
-
   sprintf(buf, "Temp: %d%cC", int(Environmentsensor.getTemperature()), 0xDF);  //Generate String to print on LCD
   LcdScreen.setCursor(0, 0);                                                   //Set Cursor to the upper left point of the LCD
   LcdScreen.print(buf);                                                        //Print the String on the Screen
