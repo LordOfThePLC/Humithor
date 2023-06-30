@@ -1,5 +1,8 @@
 //Digital Inputs
-#define DI_OPERATIONMODE 12  //Digitaleingang Betriebsartenwahlschalter 0 = Dauerbetrieb 1 = Intervallbetrieb
+#define DI_OPERATIONMODE 12   //Digitaleingang Betriebsartenwahlschalter 0 = Dauerbetrieb 1 = Intervallbetrieb
+#define DI_ENCODER_BUTTON 55  //Button Rotaryencoder
+#define DI_ENCODER_A 56       //Spur A Rotaryencoder
+#define DI_ENCODER_B 57       //Spur B Rotaryencoder
 
 //Digital Outputs
 #define DO_FAN_CIRCULATOR 3  //Digitalausgang Lüfter Umluft
@@ -16,18 +19,20 @@
 #define LCD_NROFROWS 2      //LCD Zeilenanzahl
 #define LCD_NROFCOLUMNS 16  //LCD Spaltenanzahl
 
-//Sensor-Config
-#define HYT_ADDR 0x28  //I2C Adresse
-
-//Humidity Limits
-#define HUMIDITY_LOWERLIMIT 67  //Untergrenze Luftfeuchtigkeit
-#define HUMIDITY_UPPERLIMIT 70  //Obergrenze Luftfeuchtigkeit
-
-//States
+//States Fan
 #define INIT 0       //Initialstate
 #define IDLE 1       //Leerlauf
 #define CIRCULATE 2  //Umluft
 int STATE = INIT;
 
-#define WAITTIME_IDLE 30       //Wartezeit Leerlauf
-#define WAITTIME_CIRCULATE 10  //Ablaufzeit Umluft
+//Waittimes
+#define WAITTIME_IDLE 30            //Wartezeit Leerlauf
+#define WAITTIME_CIRCULATE 10       //Ablaufzeit Umluft
+#define WAITTIME_ACIVATESETTINGS 3  //Haltezeit Button für Einstellungen
+#define REFRESHTIME_SENSOR 500      //Refresh-Zeit der Sensorwerte in Millisekunden
+
+//States LCD
+#define INIT_LCD 0    //Init LCD-Anzeige
+#define MAINSCREEN 1  //Hauptanzeige
+#define SETTINGS 2    //Einstellungen
+int STATE_LCD = MAINSCREEN;

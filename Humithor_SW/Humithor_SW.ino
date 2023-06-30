@@ -2,17 +2,21 @@
 #include "Config.h"
 #include "Class_Motor.h"
 #include "Class_Sensorhandling.h"
-
-//Include Libraries
-#include <LiquidCrystal.h>
+#include "Rotaryencoder.h"
+#include "LCD.h"
 
 //Create Instances
-LiquidCrystal LcdScreen(LCD_RESET, LCD_ENABLE, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
 Motor Fan_Circulator;
 Motor Fan_Humidifier;
 Sensorhandling Environmentsensor;
 TimerOn tOn_IntervallCirculation_On;
 TimerOn tOn_IntervallCirculation_Off;
+TimerOn tOn_ActivateSettings;
+Rotaryencoder Encoder;
+LCD Lcd;
+
+//Global Variables
+int Humidity_UpperLimit = 67;
 
 void OP_ModeInterval() {
 
@@ -48,34 +52,62 @@ void OP_ModeConstantON() {
   Fan_Circulator.SwitchOn();  //Switch Fan on
 }
 
-void ControlHumidity() {
-  if (Environmentsensor.getHumidity() <= HUMIDITY_LOWERLIMIT) {
-    Fan_Humidifier.SwitchOn();
-  } else if (Environmentsensor.getHumidity() >= HUMIDITY_UPPERLIMIT) {
-    Fan_Humidifier.SwitchOff();
-  }
-}
-
-void PrintEnvironmentData() {
-
+void HandleLCD() {
   char buf[80];  //Buffer-Memory
-  sprintf(buf, "Temp: %d%cC", int(Environmentsensor.getTemperature()), 0xDF);  //Generate String to print on LCD
-  LcdScreen.setCursor(0, 0);                                                   //Set Cursor to the upper left point of the LCD
-  LcdScreen.print(buf);                                                        //Print the String on the Screen
+  int setValue_HumidityLimit;
 
-  //Do the same with the humidity
-  sprintf(buf, "Luftf.: %3.1f%", int(Environmentsensor.getHumidity()));
-  LcdScreen.setCursor(0, 1);
-  LcdScreen.print(buf);
+  switch (STATE_LCD) {
+
+    case INIT_LCD:
+      setValue_HumidityLimit = Humidity_UpperLimit;  //Handover the Limitvalue once
+      STATE_LCD = MAINSCREEN;
+      break;
+
+    case MAINSCREEN:
+      sprintf(buf, "Temp: %d%cC", int(Environmentsensor.getTemperature()), 0xDF);  //Generate String to print on LCD
+      LcdScreen.setCursor(0, 0);                                                   //Set Cursor to the upper left point of the LCD
+      LcdScreen.print(buf);                                                        //Print the string on the screen
+
+      sprintf(buf, "Luftf.: %3.1f%", int(Environmentsensor.getHumidity()));  //Generate String to print on LCD
+      LcdScreen.setCursor(0, 1);                                             //Set Cursor to the lower left point of the LCD
+      LcdScreen.print(buf);                                                  //Print the string on the screen
+
+      if (tOn_ActivateSettings.WaitForMilliseconds(WAITTIME_ACIVATESETTINGS, (Encoder.GetButtonState()))) {  //Hold the encoderbutton for Waittime-Seconds to activate the settings-menu
+        STATE_LCD = SETTINGS;                                                                                //Change state to settings
+      }
+      break;
+
+    case SETTINGS:
+      LcdScreen.setCursor(0, 0);                        //Set Cursor to the upper left point of the LCD
+      LcdScreen.print("Hysteresebereich Luftfeuchte");  //Print Headline on Screen
+
+      if (setValue_HumidityLimit <= 100) &&(setValue_HumidityLimit >= 0) {           //If the limit is below 100 and over 0 then...
+          setValue_HumidityLimit = setValue_HumidityLimit + Encoder.GetDirection();  //...turn the encoder to increase or decrease the lower-limit of the humidity
+        }
+      else if (setValue_HumidityLimit >= 100) {  //Limit the limit with 100
+        setValue_HumidityLimit = 100;
+      } else if (setValue_HumidityLimit <= 0) {  //Limit the limit with 0
+        setValue_HumidityLimit = 0;
+      }
+
+      sprintf(buf, "Sollwert: %3.1f%", setValue_HumidityLimit);  //Generate the string to print on LCD
+      LcdScreen.setCursor(0, 1);                                 //Set the cursor to the lower left point of the LCD
+      LcdScreen.print(buf);
+
+      if (tOn_ActivateSettings.WaitForMilliseconds(WAITTIME_ACIVATESETTINGS, (Encoder.GetButtonState()))) {
+        STATE_LCD = MAINSCREEN;
+      }
+      break;
+  }
 }
 
 //Setup-Routine
 void setup() {
-  LcdScreen.begin(LCD_NROFCOLUMNS, LCD_NROFROWS);  //Init and Start LCD-Screen
-  Fan_Circulator.Init(DO_FAN_CIRCULATOR);          //Init Circulator Fan
-  Fan_Humidifier.Init(DO_FAN_HUMIDIFIER);          //Init Humdifier Fan
-  Environmentsensor.Init(HYT_ADDR);                //Init Sensor
-  Serial.begin(9600);
+  Lcd.Init(LCD_RESET, LCD_ENABLE, LCD_D4, LCD_D5, LCD_D6, LCD_D7, LCD_NROFROWS, LCD_NROFCOLUMNS);  //Init and Start LCD-Screen
+  Encoder.Init(DI_ENCODER_A, DI_ENCODER_B, DI_ENCODER_BUTTON);                                     //Init Rotaryencoder
+  Fan_Circulator.Init(DO_FAN_CIRCULATOR);                                                          //Init Circulator Fan
+  Fan_Humidifier.Init(DO_FAN_HUMIDIFIER);                                                          //Init Humidifier Fan
+  Environmentsensor.Init(REFRESHTIME_SENSOR);                                                      //Init Sensor
 }
 
 //Main-Loop
@@ -86,6 +118,5 @@ void loop() {
   } else {
     OP_ModeConstantON();
   }
-  ControlHumidity();
-  PrintEnvironmentData();
+  HandleLCD();
 }
