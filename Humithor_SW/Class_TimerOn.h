@@ -1,28 +1,27 @@
 class TimerOn {
-
 public:
-  bool WaitForMilliseconds(unsigned long delaytime, bool enable) {
-    this->_delaytime = delaytime; //hand over the value to compare with
-    this->_enable = enable; //hand over the enable-flag
-    return TimeHandler(); //call the function and return the value
+  bool WaitForMilliseconds(unsigned long long delayTime, bool enable) { //Setup and start the timer to wait for a certain amound of milliseconds - the enable-variable needs to be true the whole time
+    this->delayTime = delayTime;
+    this->enable = enable;
+    return TimeHandler();
   }
 
 private:
-  unsigned long previousTimeValue = 0; //previous timestamp to compare with
-  unsigned long _delaytime = 0; //internal variable to compare with
-  bool _enable = false; //internal variable to enable the timer
+  unsigned long previousTimeValue = 0;
+  unsigned long long delayTime = 0;
+  bool enable = false;
 
   bool TimeHandler() {
-    if (_enable) { //Handle the time only when it's enabled
-      if (micros() - previousTimeValue >= _delaytime * 1000) {  //Compare act an previous time. If the difference equals to the wanted delay-time-->
-        previousTimeValue = micros();                           //restore the new time as previous time
-        return true;                                            //return a true flag to set an action
+    if (enable) { //If the timer is enabled...
+      if (micros() - previousTimeValue >= delayTime * 1000) { //...to the "blink without delay"-thing
+        previousTimeValue = micros();
+        return true; //and return true if the time is over
       } else {
-        return false;  //else return a false flag
+        return false; //else return false
       }
-    } else { //if it's not enabled...
-      previousTimeValue = micros(); //...set the previous timestap to the actual time... 
-      return false; //...and return false
+    } else {
+      previousTimeValue = micros(); //if enable is false, reset the timer
+      return false;
     }
   }
 };

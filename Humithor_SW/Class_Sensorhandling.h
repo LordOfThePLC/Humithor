@@ -1,5 +1,5 @@
 #include <Adafruit_AHTX0.h>
-#include "Class_TimerOn.h" //Headerfile is included here, so it's also included in the Main-Script
+#include "Class_TimerOn.h"  //Headerfile is included here, so it's also included in the Main-Script
 class Sensorhandling {
 
   //Create Instances
@@ -17,22 +17,21 @@ public:
     }
   }
 
-  double getHumidity() { //returns the humidity of the sensor
+  double getHumidity() {  //returns the humidity of the sensor
     return this->humidity.relative_humidity;
   }
 
-  double getTemperature() { //returns the temperature of the sensor
+  double getTemperature() {  //returns the temperature of the sensor
     return this->temperature.temperature;
   }
-
-private:
-  sensors_event_t humidity, temperature;  //create two specific datatyps for the humidity and temperature
-  unsigned long _refreshtime = 500;       //Timeintervall to refresh the sensordata
-
   void handleSensor() {
 
     if (tOn_Refreshtime.WaitForMilliseconds(_refreshtime, true)) {  //when the time is over
       Sensor.getEvent(&humidity, &temperature);                     //...refresh the sensordata
     }
   }
+
+private:
+  sensors_event_t humidity, temperature;  //create two specific datatyps for the humidity and temperature
+  unsigned long _refreshtime = 500;       //Timeintervall to refresh the sensordata -- default value for startup
 };
