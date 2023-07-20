@@ -70,6 +70,7 @@ void OP_ModeSettings() {
       if (Encoder.GetButtonState()) {     //If the button gets pressed again...
         lcd.clear();                      //...clear the lcd and go to the next state
         if (!Encoder.GetButtonState()) {  //Release the button to jump to the next state, so you cannot "over-jump" the next state
+          Encoder.preloadEncoder(long(Humidity_LowerLimit));
           SETTINGSSTATE = SET_VALUE;
         }
       }
@@ -77,31 +78,25 @@ void OP_ModeSettings() {
 
     case SET_VALUE:
       LCD_SetUpperLine("Regelbereich NEU");  //Set up the headline
+      byte bufPos = Encoder.GetEncoderPosition();
+      sprintf(buf, "%i%s...%i%s", bufPos, "%", bufPos + 3, "%");  //Show the new set controll range
+      LCD_SetLowerLine(buf);
+      Serial.println(buf);  //Print the lower line
 
-      /*BIG TO DO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      if (Encoder.GetStatePinA()) {
-        if (Humidity_LowerLimit <= 99) {
-          Humidity_LowerLimit++;
-        } else if (Humidity_LowerLimit > 99)
-          Humidity_LowerLimit = 0;
-      }*/
-
-      sprintf(buf, "%i%s...%i%s", Humidity_LowerLimit, "%", Humidity_LowerLimit + 3, "%");  //Show the new set controll range
-      LCD_SetLowerLine(buf);                                                                //Print the lower line
-
-      if (Encoder.GetButtonState()) {                            //If the button is pressed
-        if (tOn_SaveSettings.WaitForMilliseconds(3000, true)) {  //activate the timer, and if it's time is over, go to the next state
+      if (Encoder.GetButtonState()) {                                                //If the button is pressed
+        if (tOn_SaveSettings.WaitForMilliseconds(WAITTIME_ACIVATESETTINGS, true)) {  //activate the timer, and if it's time is over, go to the next state
+          tOn_SaveSettings.WaitForMilliseconds(WAITTIME_ACIVATESETTINGS, false);
           SETTINGSSTATE = STORE_VALUE;
         }
       } else {
-        tOn_SaveSettings.WaitForMilliseconds(3000, false);  //If the button is not pressed, reset the timer
+        tOn_SaveSettings.WaitForMilliseconds(WAITTIME_ACIVATESETTINGS, false);  //If the button is not pressed, reset the timer
       }
       break;
 
     case STORE_VALUE:
-      EEPROM.update(ADR_EEPROM, Humidity_LowerLimit);  //Save the value to the EEPROM if it differs from the old value
-      delay(5);                                        //The saving-process takes about 3,3ms to finish. So wait about 5ms
-      if (LCD_Blink(3, 250)) {
+      EEPROM.update(ADR_EEPROM, Humidity_LowerLimit);    //Save the value to the EEPROM if it differs from the old value
+      delay(5);                                          //The saving-process takes about 3,3ms to finish. So wait about 5ms
+      if (LCD_Blink(NUMBER_OF_BLINKS_BGL, BLINKTIME)) {  //Let the LCD blink for a certain time and amount to show the user, that the data is stored
         SETTINGSSTATE = DONE;
       }
       break;
@@ -139,11 +134,12 @@ void Mainscreen() {
 
 //Setup-Routine
 void setup() {
-  InitLCD(LCD_NROFCOLUMNS, LCD_NROFROWS);                                       //Init the LCD
-  Encoder.Init(DI_ENCODER_A, DI_ENCODER_B, DI_ENCODER_BUTTON, 24, 15, 0, 100);  //Init Rotaryencoder
-  Fan_Circulator.Init(DO_FAN_CIRCULATOR);                                       //Init Circulator Fan
-  Fan_Humidifier.Init(DO_FAN_HUMIDIFIER);                                       //Init Humidifier Fan
-  Environmentsensor.Init(REFRESHTIME_SENSOR);                                   //Init Sensor
+  InitLCD(LCD_NROFCOLUMNS, LCD_NROFROWS);                                                        //Init the LCD
+  Fan_Circulator.Init(DO_FAN_CIRCULATOR);                                                        //Init Circulator Fan
+  Fan_Humidifier.Init(DO_FAN_HUMIDIFIER);                                                        //Init Humidifier Fan
+  Environmentsensor.Init(REFRESHTIME_SENSOR);                                                    //Init Sensor
+  Encoder.Init(DI_ENCODER_A, DI_ENCODER_B, DI_ENCODER_BUTTON, 24, Humidity_LowerLimit, 0, 100);  //Init Rotaryencoder
+  Serial.begin(9600);
 }
 
 //Main-Loop
@@ -156,8 +152,9 @@ void loop() {
         LCD_SetUpperLine("Startup...");                            //Set the Startuptext in the Upper-line
         if (EEPROM.read(ADR_EEPROM) == 0) {                        //Read the value out of the EEPROM, if it's 0...
           EEPROM.update(ADR_EEPROM, Humidity_LowerLimit_default);  //...write the default value. This is usefull for the very first inital startup
-          Startup = false;                                         //Set the startup-flag to false, the next cycle will change the state
         }
+        LCD_SetLowerLine(String(EEPROM.read(ADR_EEPROM)));
+        Startup = false;  //Set the startup-flag to false, the next cycle will change the state
       }
       if (digitalRead(DI_OPERATIONMODE)) {  //If the button is on, go to interval-mode
         MAINSTATE = INTERVAL;

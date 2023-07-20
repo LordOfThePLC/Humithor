@@ -11,6 +11,7 @@ public:
     this->Motorpin = Pinnumber;    //Safe the pinnumber to the private memory
   }
 
+
   void SwitchOn() {
     digitalWrite(this->Motorpin, HIGH);  //Set Motorpin HIGH
   }

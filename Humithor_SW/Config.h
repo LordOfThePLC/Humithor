@@ -44,7 +44,9 @@ int SETTINGSSTATE = INIT;
 #define WAITTIME_IDLE 30000            //Wartezeit Leerlauf
 #define WAITTIME_CIRCULATE 10000       //Ablaufzeit Umluft
 #define WAITTIME_ACIVATESETTINGS 3000  //Haltezeit Button für Einstellungen
-#define REFRESHTIME_SENSOR 500      //Refresh-Zeit der Sensorwerte in Millisekunden
+#define REFRESHTIME_SENSOR 500         //Refresh-Zeit der Sensorwerte in Millisekunden
+#define NUMBER_OF_BLINKS_BGL 3         //Anzahl wie oft der LCD blinkt beim speichern
+#define BLINKTIME 250                  //Blinkdauer des LCD beim speichern
 
 //Humidity Control
 byte Humidity_LowerLimit_default = 67;  //Unterer Grenzwert Luftfeuchte - defaultwert
