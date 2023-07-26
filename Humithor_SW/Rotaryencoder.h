@@ -9,9 +9,9 @@ private:
   int lowerLimit;
   int upperLimit;
   Encoder* encoder;
+  TimerOn tOn_WaittimeButton;
   byte oldPosition = -128;
   byte newPosition;
-
 
 public:
   void Init(int pinA, int pinB, int pinButton, int ppr, long start, long lowerLimit, long upperLimit) {
@@ -35,16 +35,16 @@ public:
   }
 
   long GetEncoderPosition() {
-    newPosition = (byte)encoder->read();
+    newPosition = (byte)encoder->read() / 3;
     if (newPosition != oldPosition) {
 
       oldPosition = newPosition;
       if (newPosition > this->upperLimit) {
         newPosition = this->upperLimit;
-        encoder->write(this->upperLimit);
+        encoder->write(this->upperLimit * 3);
       } else if (newPosition < this->lowerLimit) {
         newPosition = this->lowerLimit;
-        encoder->write(this->lowerLimit);
+        encoder->write(this->lowerLimit * 3);
       }
       return newPosition;
     }

@@ -35,8 +35,9 @@ int MAINSTATE = INIT;
 
 //States Settings-Statemachine
 #define SET_VALUE 2
-#define STORE_VALUE 3
-#define DONE 4
+#define PRESET 3
+#define STORE_VALUE 4
+#define DONE 5
 int SETTINGSSTATE = INIT;
 
 
