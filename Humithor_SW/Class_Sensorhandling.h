@@ -1,10 +1,10 @@
 #include <Adafruit_AHTX0.h>
-#include "Class_TimerOn.h"  //Headerfile is included here, so it's also included in the Main-Script
+#include "Class_TimerOn.h" 
 class Sensorhandling {
 
   //Create Instances
-  Adafruit_AHTX0 Sensor;    //Create Sensor-Instance
-  TimerOn tOn_Refreshtime;  //Create Timerinstance for refreshing the Sensordata
+  Adafruit_AHTX0 Sensor;          //Create Sensor-Instance
+  TimerOn tOn_RefreshSensorData;  //Create Timer-Instance
 
 public:
 
@@ -26,12 +26,26 @@ public:
   }
   void handleSensor() {
 
-    if (tOn_Refreshtime.WaitForMilliseconds(_refreshtime, true)) {  //when the time is over
-      Sensor.getEvent(&humidity, &temperature);                     //...refresh the sensordata
+    switch (state) {
+      case 0:
+        tOn_RefreshSensorData.start(); //Start the timer
+        if (tOn_RefreshSensorData.timerOutput) { //If the time is over, go into the next state
+          state = 1;
+        }
+        break;
+
+      case 1:
+        tOn_RefreshSensorData.reset(); //Reset the timer and...
+        Sensor.getEvent(&humidity, &temperature);  //...refresh the sensordata
+        state = 0; //back to idle
+        break;
     }
+
+    tOn_RefreshSensorData.WaitForMilliseconds(_refreshtime); //Call the instance
   }
 
 private:
   sensors_event_t humidity, temperature;  //create two specific datatyps for the humidity and temperature
   unsigned long _refreshtime = 500;       //Timeintervall to refresh the sensordata -- default value for startup
+  int state = 0;
 };

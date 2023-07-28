@@ -20,29 +20,33 @@ void OP_ModeInterval() {
 
   switch (STATE) {
 
-    case INIT:                                                                     //Startup the Statemachine
-      Fan_Circulator.SwitchOff();                                                  //Switch Fan off
-      tOn_IntervallCirculation_Off.WaitForMilliseconds(WAITTIME_IDLE, false);      //Hand over the waittime and switch off the timer
-      tOn_IntervallCirculation_On.WaitForMilliseconds(WAITTIME_CIRCULATE, false);  //Hand over the waittime and switch off the timer
-      STATE = IDLE;                                                                //Go in the IDLE-State
+    case INIT:                               //Startup the Statemachine
+      Fan_Circulator.SwitchOff();            //Switch Fan off
+      tOn_IntervallCirculation_Off.reset();  //Reset the timer
+      tOn_IntervallCirculation_On.reset();   //Reset the timer
+      STATE = IDLE;                          //Go in the IDLE-State
       break;
 
     case IDLE:
-      Fan_Circulator.SwitchOff();                                                   //Switch Fan off
-      if (tOn_IntervallCirculation_Off.WaitForMilliseconds(WAITTIME_IDLE, true)) {  //Wait for a certain Time until the circulation starts
-        tOn_IntervallCirculation_Off.WaitForMilliseconds(WAITTIME_IDLE, false);     //Switch off the timer
-        STATE = CIRCULATE;                                                          //If the time is over, start circulation
+      Fan_Circulator.SwitchOff();
+      tOn_IntervallCirculation_On.reset();             //Switch off the timer
+      tOn_IntervallCirculation_Off.start();            //Start the timer
+      if (tOn_IntervallCirculation_Off.timerOutput) {  //Wait for a certain time until the circulation starts
+        STATE = CIRCULATE;                             //If the time is over, start circulation
       }
       break;
 
     case CIRCULATE:
-      Fan_Circulator.SwitchOn();                                                        //Switch Fan on
-      if (tOn_IntervallCirculation_On.WaitForMilliseconds(WAITTIME_CIRCULATE, true)) {  //Wait for a certain time until circulation stops
-        tOn_IntervallCirculation_On.WaitForMilliseconds(WAITTIME_CIRCULATE, false);     //Switch off the timer
-        STATE = IDLE;                                                                   //Go to the IDLE-State
+      Fan_Circulator.SwitchOn();                      //Switch Fan on
+      tOn_IntervallCirculation_Off.reset();           //Switch off the timer
+      tOn_IntervallCirculation_On.start();            //Start the timer
+      if (tOn_IntervallCirculation_On.timerOutput) {  //Wait for a certain Time until the circulation starts
+        STATE = IDLE;                                 //Go to the IDLE-State
       }
       break;
   }
+  tOn_IntervallCirculation_Off.WaitForMilliseconds(WAITTIME_IDLE);      //Call the Instance
+  tOn_IntervallCirculation_On.WaitForMilliseconds(WAITTIME_CIRCULATE);  //Call the Instance
 }
 
 void OP_ModeConstantON() {
@@ -57,23 +61,16 @@ void OP_ModeSettings() {
   switch (SETTINGSSTATE) {
 
     case INIT:
-      if (!Encoder.GetButtonState()) {
-        SETTINGSSTATE = IDLE;
-      }
+      lcd.clear();
+      SETTINGSSTATE = IDLE;
       break;
 
     case IDLE:
       Encoder.preloadEncoder(Humidity_LowerLimit);
       LCD_SetUpperLine("Einstellungen");
       LCD_SetLowerLine("Taste druecken");
-      if (Encoder.GetButtonState()) {
-        lcd.clear();
-        SETTINGSSTATE = PRESET;
-      }
-      break;
-
-    case PRESET:
       if (!Encoder.GetButtonState()) {
+        lcd.clear();
         SETTINGSSTATE = SET_VALUE;
       }
       break;
@@ -84,13 +81,20 @@ void OP_ModeSettings() {
       sprintf(buf, "%i%s...%i%s", bufPos, "%", bufPos + 3, "%");  //Show the new set controll range
       LCD_SetLowerLine(buf);
       if (Encoder.GetButtonState()) {
-        SETTINGSSTATE = STORE_VALUE;
+        tOn_SaveSettings.start();
+        if (tOn_SaveSettings.timerOutput) {
+          lcd.clear();
+          SETTINGSSTATE = STORE_VALUE;
+        }
+      } else {
+        tOn_SaveSettings.reset();
       }
       break;
 
     case STORE_VALUE:
+      tOn_SaveSettings.reset();
       LCD_SetUpperLine("Speichern...");
-      delay(5000);                                       //The saving-process takes about 3,3ms to finish. So wait about 5ms
+      delay(5);                                       //The saving-process takes about 3,3ms to finish. So wait about 5ms
       if (LCD_Blink(NUMBER_OF_BLINKS_BGL, BLINKTIME)) {  //Let the LCD blink for a certain time and amount to show the user, that the data is stored
         lcd.clear();                                     //Clear the screen
         SETTINGSSTATE = DONE;
@@ -98,10 +102,12 @@ void OP_ModeSettings() {
       break;
 
     case DONE:
+      tOn_SaveSettings.reset();
       SETTINGSSTATE = INIT;  //Reset the statemachine
       MAINSTATE = INIT;      //Start in the INIT-State of the Main-Statemachine and come back to the mainscreen
       break;
   }
+  tOn_SaveSettings.WaitForMilliseconds(WAITTIME_ACIVATESETTINGS); //Call the instance
 }
 
 void Control_Humidity() {
@@ -155,9 +161,9 @@ void loop() {
         Startup = false;                                                  //Set the startup-flag to false, the next cycle will change the state
       }
       if (!Encoder.GetButtonState()) {
-        if (digitalRead(DI_OPERATIONMODE)) {  //If the button is on, go to interval-mode
+        if (analogRead(DI_OPERATIONMODE)) {  //If the button is on, go to interval-mode
           MAINSTATE = INTERVAL;
-        } else if (!digitalRead(DI_OPERATIONMODE)) {  //If the button is not on, go to continious-mode
+        } else if (!analogRead(DI_OPERATIONMODE)) {  //If the button is not on, go to continious-mode
           MAINSTATE = CONSTANT_ON;
         }
       }
@@ -166,30 +172,41 @@ void loop() {
     case INTERVAL:        //Handle the interval-mode
       OP_ModeInterval();  //Call the intervall-mode
       Mainscreen();
-      if (!digitalRead(DI_OPERATIONMODE)) {  //If the button is not pushed, go to continious-mode
+      if (!analogRead(DI_OPERATIONMODE)) {  //If the button is not pushed, go to continious-mode
         MAINSTATE = CONSTANT_ON;
       }
-      /*if (Encoder.GetButtonState()) {
-        lcd.clear();           //Clear the Display once
-        MAINSTATE = SETTINGS;  //...switch to the settings-menu
-      }*/
+      if (Encoder.GetButtonState()) {
+        tOn_ActivateSettings.start();
+        if (tOn_ActivateSettings.timerOutput) {
+          MAINSTATE = SETTINGS;
+        }
+      } else {
+        tOn_ActivateSettings.reset();
+      }
       break;
 
-    case CONSTANT_ON:                       //Handle the continious-mode
-      OP_ModeConstantON();                  //Call the continious-mode
-      Mainscreen();                         //Call the mainscreen-function
-      if (digitalRead(DI_OPERATIONMODE)) {  //If the button is pushed, go to interval-mode
+    case CONSTANT_ON:                      //Handle the continious-mode
+      OP_ModeConstantON();                 //Call the continious-mode
+      Mainscreen();                        //Call the mainscreen-function
+      if (analogRead(DI_OPERATIONMODE)) {  //If the button is pushed, go to interval-mode
         MAINSTATE = INTERVAL;
       }
-      /*if (Encoder.GetButtonState()) {
-        lcd.clear();           //Clear the Display once
-        MAINSTATE = SETTINGS;  //...switch to the settings-menu
-      }*/
+      if (Encoder.GetButtonState()) {
+        tOn_ActivateSettings.start();
+        if (tOn_ActivateSettings.timerOutput) {
+          MAINSTATE = SETTINGS;
+        }
+      } else {
+        tOn_ActivateSettings.reset();
+      }
       break;
 
-    /*case SETTINGS:
+    case SETTINGS:
+      tOn_ActivateSettings.reset();
       OP_ModeSettings();  //Call the settings
-      break;*/
+      break;
   }
-  Environmentsensor.handleSensor();  //Handle the sensor
+  Control_Humidity();                                                  //Call the function to handle the humidity
+  Environmentsensor.handleSensor();                                    //Handle the sensor
+  tOn_ActivateSettings.WaitForMilliseconds(WAITTIME_ACIVATESETTINGS);  //Call Instance
 }

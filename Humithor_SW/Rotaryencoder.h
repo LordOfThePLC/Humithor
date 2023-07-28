@@ -9,7 +9,6 @@ private:
   int lowerLimit;
   int upperLimit;
   Encoder* encoder;
-  TimerOn tOn_WaittimeButton;
   byte oldPosition = -128;
   byte newPosition;
 

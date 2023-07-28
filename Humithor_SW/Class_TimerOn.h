@@ -1,10 +1,21 @@
 class TimerOn {
 public:
-  bool WaitForMilliseconds(unsigned long long delayTime, bool enable) { //Setup and start the timer to wait for a certain amound of milliseconds - the enable-variable needs to be true the whole time
-    this->delayTime = delayTime;
+  void WaitForMilliseconds(unsigned long long delayTime) {  //Setup and start the timer to wait for a certain amound of milliseconds - the enable-variable needs to be true the whole time
+    this->delayTime = delayTime; 
     this->enable = enable;
-    return TimeHandler();
+    this->TimeHandler();
   }
+
+  void reset() { //Resets the timer
+    enable = false;
+    timerOutput = false;
+  }
+
+  void start() { //Starts the timer
+    enable = true;
+  }
+
+  bool timerOutput; //Output of the timer, gets high when the timer is over
 
 private:
   unsigned long previousTimeValue = 0;
@@ -12,16 +23,13 @@ private:
   bool enable = false;
 
   bool TimeHandler() {
-    if (enable) { //If the timer is enabled...
-      if (micros() - previousTimeValue >= delayTime * 1000) { //...to the "blink without delay"-thing
+    if (enable) {                                              //If the timer is enabled...
+      if (micros() - previousTimeValue >= delayTime * 1000) {  //...do the "blink without delay"-thing
         previousTimeValue = micros();
-        return true; //and return true if the time is over
-      } else {
-        return false; //else return false
+        timerOutput = true; //set the output high
       }
     } else {
-      previousTimeValue = micros(); //if enable is false, reset the timer
-      return false;
+      previousTimeValue = micros();  //if enable is false, reset the timer
     }
   }
 };

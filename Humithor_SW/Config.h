@@ -1,13 +1,13 @@
 #include "Arduino.h"
 //Digital Inputs
-#define DI_OPERATIONMODE 12   //Digitaleingang Betriebsartenwahlschalter 0 = Dauerbetrieb 1 = Intervallbetrieb
+#define DI_OPERATIONMODE A6   //Digitaleingang Betriebsartenwahlschalter 0 = Dauerbetrieb 1 = Intervallbetrieb
 #define DI_ENCODER_BUTTON 17  //Button Rotaryencoder
 #define DI_ENCODER_A 2        //Spur A Rotaryencoder
 #define DI_ENCODER_B 3        //Spur B Rotaryencoder
 
 //Digital Outputs
-#define DO_FAN_CIRCULATOR 3  //Digitalausgang Lüfter Umluft
-#define DO_FAN_HUMIDIFIER 6  //Digitalausgang Befeuchter
+#define DO_FAN_CIRCULATOR 5  //Digitalausgang Lüfter Umluft
+#define DO_FAN_HUMIDIFIER 4  //Digitalausgang Befeuchter
 
 //LCD Pins and Config
 #define LCD_RESET 6   //Resetpin LCD
@@ -35,7 +35,6 @@ int MAINSTATE = INIT;
 
 //States Settings-Statemachine
 #define SET_VALUE 2
-#define PRESET 3
 #define STORE_VALUE 4
 #define DONE 5
 int SETTINGSSTATE = INIT;
