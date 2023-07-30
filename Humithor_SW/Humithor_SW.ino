@@ -13,7 +13,6 @@ Sensorhandling Environmentsensor;
 TimerOn tOn_IntervallCirculation_On;
 TimerOn tOn_IntervallCirculation_Off;
 TimerOn tOn_ActivateSettings;
-TimerOn tOn_SaveSettings;
 Rotaryencoder Encoder;
 
 void OP_ModeInterval() {
@@ -56,58 +55,33 @@ void OP_ModeConstantON() {
 
 void OP_ModeSettings() {
 
-  char buf[LCD_NROFCOLUMNS];  //Char-array for storing the string to print
+  char buf[LCD_NROFCOLUMNS];  //Buffer for the generatet string
 
   switch (SETTINGSSTATE) {
 
-    case INIT:
-      lcd.clear();
-      SETTINGSSTATE = IDLE;
-      break;
-
-    case IDLE:
-      Encoder.preloadEncoder(Humidity_LowerLimit);
-      LCD_SetUpperLine("Einstellungen");
-      LCD_SetLowerLine("Taste druecken");
+    case INIT:                               //Init the Settings
+      LCD_SetUpperLine("Button loslassen");  //Tell the user to release the Button
       if (!Encoder.GetButtonState()) {
         lcd.clear();
-        SETTINGSSTATE = SET_VALUE;
+        Encoder.preloadEncoder(EEPROM.read(ADR_EEPROM));  //Preload the Encoder with the actual value of the EEPROM
+        SETTINGSSTATE = SET_VALUE;                        //Next state
       }
       break;
 
     case SET_VALUE:
-      LCD_SetUpperLine("Regelbereich");  //Set up the headline
-      byte bufPos = Encoder.GetEncoderPosition();
-      sprintf(buf, "%i%s...%i%s", bufPos, "%", bufPos + 3, "%");  //Show the new set controll range
-      LCD_SetLowerLine(buf);
-      if (Encoder.GetButtonState()) {
-        tOn_SaveSettings.start();
-        if (tOn_SaveSettings.timerOutput) {
-          lcd.clear();
-          SETTINGSSTATE = STORE_VALUE;
-        }
-      } else {
-        tOn_SaveSettings.reset();
+      LCD_SetUpperLine("Regelbereich");                           //Set the headline
+      byte bufPos = Encoder.GetEncoderPosition();                 //Get and store the actual encoderposition in a buffer-value
+      Humidity_LowerLimit = bufPos;                               //Set the encoderposition to the limitvalue. So you can check the behaviour of the fan on the fly
+      sprintf(buf, "%i%s...%i%s", bufPos, "%", bufPos + 3, "%");  //Generate the lower line of the LCD
+      LCD_SetLowerLine(buf);                                      //Print the LCD
+      if (Encoder.GetButtonState()) {                             //If the Button is pressed
+        lcd.clear();                                              //clear the lines
+        EEPROM.update(ADR_EEPROM, Humidity_LowerLimit);           //Update the value in the EEPROM
+        delay(5);                                                 //The writingprocess to the EEPROM takes about 3,3ms, so wait about 5ms to be sure
+        MAINSTATE = DONE;                                         //go ahead in the main-statemachine
       }
-      break;
-
-    case STORE_VALUE:
-      tOn_SaveSettings.reset();
-      LCD_SetUpperLine("Speichern...");
-      delay(5);                                       //The saving-process takes about 3,3ms to finish. So wait about 5ms
-      if (LCD_Blink(NUMBER_OF_BLINKS_BGL, BLINKTIME)) {  //Let the LCD blink for a certain time and amount to show the user, that the data is stored
-        lcd.clear();                                     //Clear the screen
-        SETTINGSSTATE = DONE;
-      }
-      break;
-
-    case DONE:
-      tOn_SaveSettings.reset();
-      SETTINGSSTATE = INIT;  //Reset the statemachine
-      MAINSTATE = INIT;      //Start in the INIT-State of the Main-Statemachine and come back to the mainscreen
       break;
   }
-  tOn_SaveSettings.WaitForMilliseconds(WAITTIME_ACIVATESETTINGS); //Call the instance
 }
 
 void Control_Humidity() {
@@ -135,11 +109,11 @@ void Mainscreen() {
 
 //Setup-Routine
 void setup() {
-  InitLCD(LCD_NROFCOLUMNS, LCD_NROFROWS);                                                        //Init the LCD
-  Fan_Circulator.Init(DO_FAN_CIRCULATOR);                                                        //Init Circulator Fan
-  Fan_Humidifier.Init(DO_FAN_HUMIDIFIER);                                                        //Init Humidifier Fan
-  Environmentsensor.Init(REFRESHTIME_SENSOR);                                                    //Init Sensor
-  Encoder.Init(DI_ENCODER_A, DI_ENCODER_B, DI_ENCODER_BUTTON, 24, Humidity_LowerLimit, 0, 100);  //Init Rotaryencoder
+  InitLCD(LCD_NROFCOLUMNS, LCD_NROFROWS);                                                    //Init the LCD
+  Fan_Circulator.Init(DO_FAN_CIRCULATOR);                                                    //Init Circulator Fan
+  Fan_Humidifier.Init(DO_FAN_HUMIDIFIER);                                                    //Init Humidifier Fan
+  Environmentsensor.Init(REFRESHTIME_SENSOR);                                                //Init Sensor
+  Encoder.Init(DI_ENCODER_A, DI_ENCODER_B, DI_ENCODER_BUTTON, Humidity_LowerLimit, 0, 100);  //Init Rotaryencoder
 }
 
 //Main-Loop
@@ -155,6 +129,7 @@ void loop() {
         }
         delay(500);                                                       //Wait until EEPROM is read
         char buf[LCD_NROFCOLUMNS];                                        //Buffervalue for buffering the string
+        Humidity_LowerLimit = EEPROM.read(ADR_EEPROM);                    //Read the EEPROM and store the value into the variable
         sprintf(buf, "Wert %i%s geladen", EEPROM.read(ADR_EEPROM), "%");  //Create the string with the loaded value
         LCD_SetLowerLine(buf);                                            //Print the text on the screen
         delay(1500);                                                      //Wait and show the loaded value
@@ -167,6 +142,7 @@ void loop() {
           MAINSTATE = CONSTANT_ON;
         }
       }
+      SETTINGSSTATE = INIT;
       break;
 
     case INTERVAL:        //Handle the interval-mode
@@ -175,13 +151,14 @@ void loop() {
       if (!analogRead(DI_OPERATIONMODE)) {  //If the button is not pushed, go to continious-mode
         MAINSTATE = CONSTANT_ON;
       }
-      if (Encoder.GetButtonState()) {
-        tOn_ActivateSettings.start();
-        if (tOn_ActivateSettings.timerOutput) {
-          MAINSTATE = SETTINGS;
+      if (Encoder.GetButtonState()) {            //if the Button is pressed...
+        tOn_ActivateSettings.start();            //...start the timer
+        if (tOn_ActivateSettings.timerOutput) {  //if the time is over
+          lcd.clear();                           //clear all the lines
+          MAINSTATE = SETTINGS;                  //and go to the settins
         }
       } else {
-        tOn_ActivateSettings.reset();
+        tOn_ActivateSettings.reset();  //if the button is released before the time is over, reset the timer
       }
       break;
 
@@ -191,19 +168,30 @@ void loop() {
       if (analogRead(DI_OPERATIONMODE)) {  //If the button is pushed, go to interval-mode
         MAINSTATE = INTERVAL;
       }
-      if (Encoder.GetButtonState()) {
-        tOn_ActivateSettings.start();
-        if (tOn_ActivateSettings.timerOutput) {
-          MAINSTATE = SETTINGS;
+      if (Encoder.GetButtonState()) {            //if the Button is pressed...
+        tOn_ActivateSettings.start();            //...start the timer
+        if (tOn_ActivateSettings.timerOutput) {  //if the time is over
+          lcd.clear();                           //clear all the lines
+          MAINSTATE = SETTINGS;                  //and go to the settins
         }
       } else {
-        tOn_ActivateSettings.reset();
+        tOn_ActivateSettings.reset();  //if the button is released before the time is over, reset the timer
       }
       break;
 
     case SETTINGS:
-      tOn_ActivateSettings.reset();
-      OP_ModeSettings();  //Call the settings
+      tOn_ActivateSettings.reset();  //Reset the timer
+      OP_ModeSettings();             //Call the settings
+      break;
+
+    case DONE:
+      char buf[LCD_NROFCOLUMNS];                                       //buffer for the lines on the LCD
+      LCD_SetUpperLine("Gespeichert!");                                //Set the headline
+      sprintf(buf, "Neuer Wert: %i%s", EEPROM.read(ADR_EEPROM), "%");  //Generate the String for the lower line
+      LCD_SetLowerLine(buf);                                           //Print the lowerline
+      delay(1500);                                                     //Wait for a moment to print out the text
+      lcd.clear();                                                     //clear the lines
+      MAINSTATE = INIT;                                                //restart the process
       break;
   }
   Control_Humidity();                                                  //Call the function to handle the humidity

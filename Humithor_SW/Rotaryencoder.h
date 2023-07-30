@@ -13,27 +13,28 @@ private:
   byte newPosition;
 
 public:
-  void Init(int pinA, int pinB, int pinButton, int ppr, long start, long lowerLimit, long upperLimit) {
-    this->pinA = pinA;
+  void Init(int pinA, int pinB, int pinButton,long start, long lowerLimit, long upperLimit) { //Init and startup the encoder
+    this->pinA = pinA; //Handover all the parameters
     this->pinB = pinB;
     this->pinButton = pinButton;
     this->lowerLimit = lowerLimit;
     this->upperLimit = upperLimit;
 
+    //Declare and set the pins as Inputs
     pinMode(pinButton, INPUT);
     pinMode(pinA, INPUT);
     pinMode(pinB, INPUT);
 
-    encoder = new Encoder(pinA, pinB);
+    encoder = new Encoder(pinA, pinB); //create a new instance of the encoder-library
 
-    encoder->write(start);
+    encoder->write(start*3); //set the startvalue of the encoder-position for the first time
   }
 
-  void preloadEncoder(long preload_value) {
-    encoder->write(preload_value);
+  void preloadEncoder(long preload_value) { //set the startvalue of the encoder manually
+    encoder->write(preload_value*3);
   }
 
-  long GetEncoderPosition() {
+  long GetEncoderPosition() { //Returns the actual encoderposition
     newPosition = (byte)encoder->read() / 3;
     if (newPosition != oldPosition) {
 
@@ -48,7 +49,7 @@ public:
       return newPosition;
     }
   }
-  bool GetButtonState() {
+  bool GetButtonState() { //Returns the actual state if the button is pressed or not
     return !digitalRead(pinButton);
   }
 };
